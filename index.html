@@ -201,17 +201,37 @@
   .steps-tip b{font-weight:800;color:#6a4f12;}
 
   /* ---------- 모바일 레이아웃 ---------- */
+  /* 데스크톱: 모바일 전용 UI 숨김 (PC 레이아웃에 영향 없음) */
+  #mFab,#mBackdrop,.m-handle{display:none;}
+
+  /* ---------- 모바일 전용: 전체화면 뷰 + 아래에서 올라오는 도구 서랍 ---------- */
   @media(max-width:820px){
-    #app{flex-direction:column;height:auto;min-height:100vh;}
-    #panel{width:100%;min-width:0;height:auto;max-height:48vh;box-shadow:0 2px 10px rgba(0,0,0,.08);}
-    #main{flex:none;width:100%;height:54vh;min-height:330px;}
-    .head{padding:12px 15px;} .head h1{font-size:14px;} .head p{display:none;}
-    .sec{padding:12px 15px;}
-    .steps{padding:11px 15px 2px;} .mode-bar{padding:8px 15px;}
+    #app{display:block;height:100vh;overflow:hidden;}
+    #main{position:fixed;inset:0;width:100%;height:100vh;flex:none;}
+    /* 패널 = 하단 시트(기본은 화면 밖으로 숨김) */
+    #panel{position:fixed;left:0;right:0;top:auto;bottom:0;width:100%;min-width:0;height:auto;
+      max-height:80vh;border-radius:16px 16px 0 0;box-shadow:0 -8px 28px rgba(0,0,0,.24);
+      transform:translateY(106%);transition:transform .28s ease;z-index:62;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    #app.drawer-open #panel{transform:translateY(0);}
+    .head{display:none;}
+    .m-handle{display:block;position:sticky;top:0;background:#fff;z-index:3;padding:9px 14px 8px;border-bottom:1px solid var(--line);}
+    .m-handle .grip{width:40px;height:4px;border-radius:3px;background:#cdd6e0;margin:0 auto 7px;}
+    .m-handle .mt{font-size:13px;font-weight:800;color:var(--navy);}
+    .m-handle #mClose{position:absolute;right:11px;top:8px;border:none;background:#eef2f7;color:var(--ink);
+      border-radius:8px;padding:6px 13px;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;}
+    /* 플래너 모드에서만 뜨는 도구 버튼(FAB) */
+    #app.planner-on #mFab{display:flex;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:55;
+      align-items:center;gap:7px;background:var(--navy2);color:#fff;border:none;border-radius:30px;padding:12px 22px;
+      font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 5px 18px rgba(37,84,168,.42);}
+    /* 배경 딤 */
+    #mBackdrop{display:block;position:fixed;inset:0;background:rgba(15,28,48,.42);z-index:60;opacity:0;pointer-events:none;transition:opacity .28s;}
+    #app.drawer-open #mBackdrop{opacity:1;pointer-events:auto;}
+    /* 뷰 컨트롤 컴팩트 + FAB와 겹치지 않게 위로 */
+    .sec{padding:12px 15px;} .steps{padding:11px 15px 2px;} .mode-bar{padding:8px 15px;} .reopen-bar{margin:10px 14px;}
     #viewbar{top:8px;padding:2px;} #viewbar button{padding:6px 12px;font-size:11.5px;}
-    #zoombar{bottom:10px;right:10px;padding:5px 9px;} #zoombar input{width:74px;}
-    #legend3d{font-size:10px;padding:7px 9px;bottom:10px;left:10px;}
-    #compass{width:40px;height:40px;top:8px;left:8px;}
+    #zoombar{bottom:80px;right:10px;padding:5px 9px;} #zoombar input{width:68px;}
+    #legend3d{font-size:10px;padding:7px 9px;bottom:80px;left:10px;}
+    #compass{width:38px;height:38px;top:8px;left:8px;}
   }
 </style>
 </head>
@@ -220,6 +240,7 @@
 
   <!-- ============ PANEL ============ -->
   <aside id="panel" class="simple">
+    <div class="m-handle"><div class="grip"></div><span class="mt">🛠 배치 도구</span><button id="mClose" type="button">닫기 ✕</button></div>
     <div class="head">
       <h1>🏫 용인중학교 공간재구조화 배치 플래너</h1>
       <p>교사2호동 개축 + 중심공간(광장형) 660㎡ 배치 시뮬레이션 · 면적/층수 실시간 검토</p>
@@ -325,7 +346,7 @@
           <span id="edRotVal" style="font-size:11px;width:34px;text-align:right;font-variant-numeric:tabular-nums;">0°</span>
           <button class="btn btn-ghost" id="edRot90" style="padding:5px 9px;">+90°</button>
         </div>
-        <div class="ed-note adv" style="margin-top:5px;">개축동·중심공간 전체가 중심을 기준으로 함께 회전합니다(360° 자유).</div>
+        <div class="ed-note adv" style="margin-top:5px;">선택한 블록이 자기 중심으로 회전합니다(360° 자유). ‘통째로 이동’을 켜면 같은 종류 블록이 함께 회전합니다.</div>
         <div class="row" style="margin-top:10px;">
           <button class="btn btn-danger" id="edDelete" style="flex:1;">🗑 선택 블록 삭제</button>
         </div>
@@ -393,6 +414,9 @@
       <div class="intro-hint">빈 공간 드래그 = 시점 회전 · 휠/두 손가락 = 확대/축소　|　개축동(하늘색·1층 필로티) · 중점공간(주황) · 계단형 야외공간(주황) · 교사2호동(개축대상)</div>
     </div>
   </div>
+
+  <button id="mFab" type="button"><span style="font-size:16px;line-height:1;">🛠</span> 배치 도구</button>
+  <div id="mBackdrop"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -641,13 +665,13 @@
   $('edRot').addEventListener('input',()=>{
     const b=state.blocks.find(x=>x.id===state.selId); if(!b)return;
     const target=parseFloat($('edRot').value)||0;
-    rotateGroup(groupOf(b), target-(b.rot||0));
+    rotateGroup(state.groupMove?groupOf(b):[b], target-(b.rot||0));
     $('edRotVal').textContent=Math.round(b.rot||0)+'°';
     renderStage();
   });
   $('edRot90').addEventListener('click',()=>{
     const b=state.blocks.find(x=>x.id===state.selId); if(!b)return;
-    rotateGroup(groupOf(b),90);
+    rotateGroup(state.groupMove?groupOf(b):[b],90);
     $('edRot').value=Math.round(b.rot||0); $('edRotVal').textContent=Math.round(b.rot||0)+'°';
     renderStage();
   });
@@ -1039,6 +1063,7 @@
   }
   function enterIntro(){
     state.introMode=true;
+    $('app').classList.remove('planner-on','drawer-open');
     $('panel').style.display='none';
     $('introOverlay').style.display='flex';
     switchView('3d');
@@ -1048,6 +1073,7 @@
   }
   function startPlanner(){
     state.introMode=false;
+    $('app').classList.add('planner-on'); $('app').classList.remove('drawer-open');
     $('introOverlay').style.display='none';
     $('panel').style.display='';
     state.blocks=defaultBlocks(); select(null);
@@ -1057,6 +1083,16 @@
   document.querySelectorAll('.intro-tabs button').forEach(btn=>btn.addEventListener('click',()=>showOption(+btn.dataset.opt)));
   $('introStart').addEventListener('click',startPlanner);
   $('reopenIntro').addEventListener('click',enterIntro);
+
+  // 모바일 도구 서랍 열기/닫기 (PC에서는 버튼이 숨겨져 영향 없음)
+  (function(){
+    var app=$('app'), f=$('mFab'), c=$('mClose'), b=$('mBackdrop');
+    var open=function(){ app.classList.add('drawer-open'); };
+    var close=function(){ app.classList.remove('drawer-open'); };
+    if(f) f.addEventListener('click',open);
+    if(c) c.addEventListener('click',close);
+    if(b) b.addEventListener('click',close);
+  })();
 
   // 간단/자세히 모드
   (function(){
