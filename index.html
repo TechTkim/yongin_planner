@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>용인중학교 공간재구조화 배치 플래너</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --navy:#1b3a6b; --navy2:#2554a8; --ink:#1b2733; --muted:#5b6b7b;
+    --line:#dfe5ec; --bg:#eef2f6; --panel:#ffffff;
+    --exist:#9aa6b2; --exist-bd:#7c8896;
+    --rebuild:#e2624f; --rebuild-bd:#c44734; --rebuild-fill:rgba(226,98,79,.20);
+    --central:#1aa3a3; --central-bd:#0d8585; --central-fill:rgba(26,163,163,.20);
+    --field:#cfe3c7; --field-bd:#a9c79c;
+    --ok:#1f9d57; --warn:#e0a008; --bad:#d8453a;
+  }
+  html,body{width:100%;height:100%;overflow:hidden;
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+    color:var(--ink);background:var(--bg);}
+  #app{display:flex;width:100vw;height:100vh;}
+
+  /* ---------- Panel ---------- */
+  #panel{width:372px;min-width:372px;height:100%;background:var(--panel);
+    overflow-y:auto;box-shadow:2px 0 14px rgba(0,0,0,.07);z-index:5;}
+  #panel::-webkit-scrollbar{width:9px;}
+  #panel::-webkit-scrollbar-thumb{background:#c7d0db;border-radius:5px;}
+  .head{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:16px 18px;}
+  .head h1{font-size:16px;font-weight:800;letter-spacing:-.3px;}
+  .head p{font-size:11.5px;opacity:.85;margin-top:3px;line-height:1.4;}
+  .sec{border-bottom:1px solid var(--line);padding:14px 18px;}
+  .sec h2{font-size:13px;font-weight:800;display:flex;align-items:center;gap:7px;margin-bottom:11px;}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .dot.r{background:var(--rebuild);} .dot.c{background:var(--central);}
+  .dot.e{background:var(--exist);} .dot.f{background:var(--field);}
+  .hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;}
+
+  .btn{border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;
+    cursor:pointer;font-family:inherit;transition:.12s;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--navy2);color:#fff;}
+  .btn-primary:hover{background:#1d469a;}
+  .btn-r{background:var(--rebuild);color:#fff;} .btn-r:hover{filter:brightness(.95);}
+  .btn-c{background:var(--central);color:#fff;} .btn-c:hover{filter:brightness(.95);}
+  .btn-ghost{background:#eef2f7;color:var(--ink);}
+  .btn-ghost:hover{background:#e3e9f1;}
+  .btn-danger{background:#fbe9e7;color:var(--bad);}
+  .row{display:flex;gap:7px;flex-wrap:wrap;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+
+  .preset{background:#f4f7fb;border:1.5px solid var(--line);border-radius:9px;
+    padding:8px 4px;cursor:pointer;text-align:center;transition:.12s;}
+  .preset:hover{border-color:var(--navy2);background:#eef3fb;}
+  .preset svg{display:block;margin:0 auto 4px;}
+  .preset span{font-size:10.5px;font-weight:700;color:#3a4a5b;}
+
+  /* readout cards */
+  .card{border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;margin-top:9px;}
+  .card .ct{font-size:11.5px;font-weight:800;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .meter{margin-bottom:9px;}
+  .meter:last-child{margin-bottom:0;}
+  .meter .ml{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;}
+  .meter .ml b{font-variant-numeric:tabular-nums;}
+  .bar{height:8px;border-radius:5px;background:#edf1f6;overflow:hidden;}
+  .bar > i{display:block;height:100%;border-radius:5px;transition:width .15s,background .15s;}
+  .tag{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:6px;}
+  .tag.ok{background:#e3f6ec;color:var(--ok);}
+  .tag.warn{background:#fdf3d9;color:#a87c08;}
+  .tag.bad{background:#fbe5e3;color:var(--bad);}
+
+  .field-mini{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted);}
+  .field-mini input{width:64px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;
+    font-size:11px;font-family:inherit;text-align:right;}
+
+  /* selected block editor */
+  #editor{display:none;}
+  #editor.on{display:block;}
+  .ed-grid{display:grid;grid-template-columns:auto 1fr;gap:7px 9px;align-items:center;margin:9px 0;}
+  .ed-grid label{font-size:11.5px;color:var(--muted);}
+  .ed-grid .inp{display:flex;align-items:center;gap:6px;}
+  .ed-grid input[type=number]{width:100%;padding:5px 7px;border:1.5px solid var(--line);
+    border-radius:7px;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums;}
+  .ed-grid input:focus{outline:none;border-color:var(--navy2);}
+  .ed-note{font-size:10.5px;color:var(--muted);}
+  .flr-warn{color:var(--bad)!important;border-color:var(--bad)!important;background:#fdecea;}
+
+  .chk{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;line-height:1.45;margin-bottom:7px;cursor:pointer;}
+  .chk input{margin-top:2px;width:14px;height:14px;flex-shrink:0;accent-color:var(--navy2);}
+  textarea{width:100%;min-height:70px;border:1.5px solid var(--line);border-radius:8px;
+    padding:8px;font-size:11.5px;font-family:inherit;line-height:1.5;resize:vertical;}
+  textarea:focus{outline:none;border-color:var(--navy2);}
+
+  .toggle{display:flex;align-items:center;justify-content:space-between;font-size:12px;
+    font-weight:600;padding:5px 0;}
+  .sw{position:relative;width:40px;height:22px;}
+  .sw input{opacity:0;width:0;height:0;}
+  .sw span{position:absolute;inset:0;background:#cdd6e0;border-radius:22px;cursor:pointer;transition:.18s;}
+  .sw span:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;
+    background:#fff;border-radius:50%;transition:.18s;}
+  .sw input:checked + span{background:var(--navy2);}
+  .sw input:checked + span:before{transform:translateX(18px);}
+
+  /* ---------- Stage ---------- */
+  #main{flex:1;position:relative;overflow:hidden;background:
+    radial-gradient(circle at 30% 20%,#f3f6fa,#e7ecf2);}
+  #viewbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:3px;box-shadow:0 2px 10px rgba(0,0,0,.1);}
+  #viewbar button{border:none;background:transparent;padding:6px 16px;border-radius:7px;
+    font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);}
+  #viewbar button.on{background:var(--navy2);color:#fff;}
+
+  #zoombar{position:absolute;bottom:14px;right:16px;z-index:20;display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 11px;
+    box-shadow:0 2px 10px rgba(0,0,0,.1);font-size:11px;color:var(--muted);}
+  #zoombar input{width:96px;}
+  #compass{position:absolute;top:14px;left:14px;z-index:20;width:50px;height:50px;border-radius:50%;
+    background:#fff;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12);
+    display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);}
+  #compass b{position:absolute;top:4px;color:#c0392b;font-size:11px;}
+
+  #wrap2d{position:absolute;inset:0;overflow:auto;}
+  #stage{position:relative;margin:auto;background:#fff;
+    background-image:linear-gradient(#eef2f7 1px,transparent 1px),linear-gradient(90deg,#eef2f7 1px,transparent 1px);
+    box-shadow:0 4px 24px rgba(0,0,0,.12);}
+  .blk{position:absolute;border:2px solid;border-radius:3px;cursor:move;touch-action:none;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:11px;font-weight:700;user-select:none;overflow:hidden;transition:box-shadow .1s;}
+  .blk small{font-weight:600;opacity:.85;font-size:9.5px;}
+  .blk.t-field{background:var(--field);border-color:var(--field-bd);color:#4a6b3e;cursor:move;}
+  .blk.t-existing{background:rgba(154,166,178,.55);border-color:var(--exist-bd);color:#33414e;border-style:solid;}
+  .blk.t-existing.is2{background:var(--rebuild-fill);border-color:var(--rebuild-bd);border-style:dashed;color:#a83523;}
+  .blk.t-rebuild{background:var(--rebuild-fill);border-color:var(--rebuild-bd);color:#a83523;}
+  .blk.piloti{background-image:repeating-linear-gradient(45deg,rgba(196,71,52,.17) 0 5px,transparent 5px 11px);}
+  .blk.t-central{background:var(--central-fill);border-color:var(--central-bd);color:#0a6f6f;}
+  .blk.sel{box-shadow:0 0 0 3px rgba(37,84,168,.45),0 4px 14px rgba(0,0,0,.18);z-index:9!important;}
+  .handle{position:absolute;width:14px;height:14px;right:-7px;bottom:-7px;background:#fff;touch-action:none;
+    border:2px solid var(--navy2);border-radius:50%;cursor:nwse-resize;z-index:10;}
+  .badge{position:absolute;top:-9px;left:-2px;font-size:8.5px;font-weight:800;color:#fff;
+    background:var(--navy2);padding:1px 5px;border-radius:5px;pointer-events:none;}
+  .edge{position:absolute;pointer-events:none;font-size:10.5px;font-weight:700;color:#94a0ad;
+    background:rgba(255,255,255,.72);padding:1px 6px;border-radius:5px;letter-spacing:-.2px;z-index:1;}
+
+  #c3d{position:absolute;inset:0;display:none;}
+  #legend3d{position:absolute;bottom:14px;left:16px;z-index:20;background:rgba(255,255,255,.94);
+    border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:11px;display:none;}
+  #legend3d div{display:flex;align-items:center;gap:7px;margin:3px 0;}
+  #legend3d i{width:12px;height:12px;border-radius:3px;display:inline-block;}
+  /* ===== 3개 배치대안 미리보기 ===== */
+  #introOverlay{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;pointer-events:none;}
+  .intro-top{pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    padding:11px 18px;background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.84));
+    border-bottom:1px solid var(--line);}
+  .intro-title{font-size:14px;font-weight:800;color:var(--navy);}
+  .intro-title small{display:block;font-size:10.5px;font-weight:600;color:var(--muted);margin-top:2px;}
+  .intro-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .intro-tabs button{border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px 17px;
+    font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);transition:.12s;}
+  .intro-tabs button:hover{border-color:var(--navy2);color:var(--navy2);}
+  .intro-tabs button.on{background:var(--navy2);color:#fff;border-color:var(--navy2);}
+  .intro-desc{pointer-events:auto;position:absolute;left:18px;bottom:18px;width:494px;max-width:86vw;
+    background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:11px;padding:10px 14px;
+    box-shadow:0 8px 26px rgba(20,40,80,.16);max-height:46vh;overflow:auto;}
+  .id-title{font-size:13px;font-weight:800;color:var(--ink);line-height:1.4;}
+  .id-meta{font-size:10px;color:var(--muted);margin:4px 0 9px;padding-bottom:7px;border-bottom:1px dashed var(--line);}
+  .id-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .id-h{font-size:16px;font-weight:800;margin-bottom:5px;}
+  .id-h.pos{color:var(--ok);} .id-h.neg{color:var(--bad);}
+  .id-cols ul{margin:0;padding-left:14px;}
+  .id-cols li{font-size:15px;font-weight:700;line-height:1.45;margin-bottom:5px;color:#3c4a5a;}
+  .intro-start{pointer-events:auto;margin-left:8px;
+    background:var(--navy2);color:#fff;border:none;border-radius:9px;padding:8px 18px;
+    font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(37,84,168,.34);transition:.12s;}
+  .intro-start:hover{background:#1d469a;transform:translateY(-1px);}
+  .intro-hint{pointer-events:none;position:absolute;right:18px;bottom:66px;font-size:10.5px;color:#5b6b7b;
+    background:rgba(255,255,255,.82);padding:5px 10px;border-radius:8px;border:1px solid var(--line);}
+  .reopen-bar{margin:0 0 12px;}
+  .reopen-bar button{width:100%;border:1.5px dashed var(--navy2);background:#f1f6ff;color:var(--navy2);
+    border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .reopen-bar button:hover{background:#e6f0ff;}
+  @media(max-width:760px){ .intro-desc{width:auto;left:10px;right:10px;max-width:none;bottom:62px;max-height:44vh;}
+    .intro-start{margin-left:0;} .intro-hint{display:none;} }
+
+  /* ---------- 간단/자세히 모드 ---------- */
+  #panel.simple .adv{display:none!important;}
+  .mode-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:9px 18px;background:#eef3fb;border-bottom:1px solid var(--line);}
+  .mode-bar .ml{font-size:11.5px;font-weight:800;color:var(--navy2);}
+  .mode-bar button{border:1.5px solid var(--navy2);background:#fff;color:var(--navy2);
+    border-radius:8px;padding:6px 14px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit;transition:.12s;}
+  .mode-bar button:hover{background:#e3edfb;}
+  .steps{padding:12px 18px 2px;}
+  .steps .st{display:flex;gap:9px;align-items:flex-start;margin-bottom:8px;font-size:12px;color:#3c4a5a;line-height:1.45;}
+  .steps .st .n{display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    width:20px;height:20px;border-radius:50%;background:var(--navy2);color:#fff;font-size:11px;font-weight:800;}
+  .steps .st b{font-weight:800;color:var(--ink);}
+  .steps .st span i{display:block;font-style:normal;font-weight:500;color:#5d6c7d;font-size:11px;line-height:1.5;margin-top:3px;}
+  .steps-tip{margin:4px 0 2px;padding:8px 10px;background:#fff7e9;border:1px solid #f0dcad;border-radius:9px;
+    font-size:11px;color:#7a5f1e;line-height:1.55;}
+  .steps-tip b{font-weight:800;color:#6a4f12;}
+
+  /* ---------- 모바일 레이아웃 ---------- */
+  @media(max-width:820px){
+    #app{flex-direction:column;height:auto;min-height:100vh;}
+    #panel{width:100%;min-width:0;height:auto;max-height:48vh;box-shadow:0 2px 10px rgba(0,0,0,.08);}
+    #main{flex:none;width:100%;height:54vh;min-height:330px;}
+    .head{padding:12px 15px;} .head h1{font-size:14px;} .head p{display:none;}
+    .sec{padding:12px 15px;}
+    .steps{padding:11px 15px 2px;} .mode-bar{padding:8px 15px;}
+    #viewbar{top:8px;padding:2px;} #viewbar button{padding:6px 12px;font-size:11.5px;}
+    #zoombar{bottom:10px;right:10px;padding:5px 9px;} #zoombar input{width:74px;}
+    #legend3d{font-size:10px;padding:7px 9px;bottom:10px;left:10px;}
+    #compass{width:40px;height:40px;top:8px;left:8px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ PANEL ============ -->
+  <aside id="panel" class="simple">
+    <div class="head">
+      <h1>🏫 용인중학교 공간재구조화 배치 플래너</h1>
+      <p>교사2호동 개축 + 중심공간(광장형) 660㎡ 배치 시뮬레이션 · 면적/층수 실시간 검토</p>
+    </div>
+    <div class="reopen-bar"><button id="reopenIntro">📐 3개 배치대안 입체로 다시 보기</button></div>
+
+    <div class="mode-bar">
+      <span class="ml">🧭 지금은 <u>간단 보기</u></span>
+      <button id="btnMode">자세히 ▾</button>
+    </div>
+    <div class="steps">
+      <div class="st"><span class="n">1</span><span><b>모양 고르기</b><i>아래 ‘① 개축동’과 ‘② 중심공간(광장)’에서 원하는 모양 버튼을 누르면, 가운데 도면에 그 블록이 나타나요.</i></span></div>
+      <div class="st"><span class="n">2</span><span><b>끌어서 배치하기</b><i>도면의 블록을 손가락(또는 마우스)으로 <b>끌어</b> 원하는 자리로 옮겨요. 블록을 <b>한 번 누르면</b> 크기·층수를 바꿀 수 있고, 모서리 흰 점을 끌면 크기가 조절돼요.</i></span></div>
+      <div class="st"><span class="n">3</span><span><b>입체로 보고 저장하기</b><i>위쪽 <u>입체(3D)</u> 버튼을 누르면 3D로 보이고, <u>📷 캡처</u>를 누르면 지금 화면이 이미지로 저장돼요.</i></span></div>
+      <div class="steps-tip">💡 <b>3D 화면 조작</b> — 빈 곳을 끌면 <b>시점이 돌아가고</b>, 두 손가락을 벌리면 <b>확대/축소</b>돼요(마우스는 휠). 잘못 놓았으면 블록을 누른 뒤 <b>Delete</b> 키 또는 🗑 삭제 버튼으로 지워요.</div>
+    </div>
+
+    <!-- 개축동 -->
+    <div class="sec">
+      <h2><span class="dot r"></span>① 개축동 (교사2호동 재건축)</h2>
+      <div class="grid3" style="margin-bottom:8px;">
+        <div class="preset" data-shape="bar"><svg width="34" height="20"><rect x="2" y="7" width="30" height="6" rx="1" fill="#e2624f"/></svg><span>일자(一)</span></div>
+        <div class="preset" data-shape="parallel"><svg width="34" height="20"><rect x="2" y="3" width="30" height="5" rx="1" fill="#e2624f"/><rect x="2" y="12" width="30" height="5" rx="1" fill="#e2624f"/></svg><span>나란히(11)</span></div>
+        <div class="preset" data-shape="L"><svg width="34" height="20"><rect x="2" y="2" width="6" height="16" rx="1" fill="#e2624f"/><rect x="2" y="12" width="26" height="6" rx="1" fill="#e2624f"/></svg><span>ㄴ자</span></div>
+        <div class="preset" data-shape="U"><svg width="34" height="20"><rect x="2" y="2" width="6" height="16" fill="#e2624f"/><rect x="26" y="2" width="6" height="16" fill="#e2624f"/><rect x="2" y="12" width="30" height="6" fill="#e2624f"/></svg><span>ㄷ자</span></div>
+        <div class="preset" data-shape="split"><svg width="34" height="20"><rect x="2" y="7" width="13" height="6" rx="1" fill="#e2624f"/><rect x="19" y="7" width="13" height="6" rx="1" fill="#e2624f"/></svg><span>분리(2동)</span></div>
+        <div class="preset" data-add="rebuild"><svg width="34" height="20"><line x1="17" y1="4" x2="17" y2="16" stroke="#c44734" stroke-width="2.5"/><line x1="11" y1="10" x2="23" y2="10" stroke="#c44734" stroke-width="2.5"/></svg><span>1동 추가</span></div>
+      </div>
+
+      <div class="card adv">
+        <div class="ct">개축 면적 검토 <span id="rb-status" class="tag ok">검토</span></div>
+        <div class="field-mini" style="margin-bottom:9px;">상한 기준 ·
+          건축면적<input id="cFoot" type="number" step="0.01" value="1295.84">㎡ /
+          연면적<input id="cArea" type="number" step="0.01" value="3887.52">㎡</div>
+        <div class="meter">
+          <div class="ml"><span>총 건축면적(1층 바닥)</span><b><span id="rbFoot">0</span> / <span id="rbFootMax">1295.8</span>㎡</b></div>
+          <div class="bar"><i id="rbFootBar" style="width:0%;background:var(--ok)"></i></div>
+        </div>
+        <div class="meter">
+          <div class="ml"><span>총 연면적</span><b><span id="rbArea">0</span> / <span id="rbAreaMax">3887.5</span>㎡</b></div>
+          <div class="bar"><i id="rbAreaBar" style="width:0%;background:var(--ok)"></i></div>
+        </div>
+        <div class="meter">
+          <div class="ml"><span>최고 층수</span><b><span id="rbFlr">0</span> / 3층</b></div>
+          <div class="bar"><i id="rbFlrBar" style="width:0%;background:var(--ok)"></i></div>
+        </div>
+      </div>
+      <label class="chk adv" style="margin-top:11px;background:#fdf1ef;border:1px solid #f1cfc9;border-radius:9px;padding:9px 10px;">
+        <input id="tgPiloti" type="checkbox">
+        <span><b>개축동 1층 필로티(piloti) 구조</b><br><span style="color:var(--muted);font-size:10.5px;">기둥만 두고 1층을 개방 — 입체도면에 반영되며, 1층 바닥면적은 연면적에서 제외</span></span>
+      </label>
+      <div id="rbPilotiNote" class="hint adv" style="display:none;color:#a83523;">※ 1층 필로티 면적은 연면적 산정에서 제외했습니다(벽 없이 개방되고 주차장·통로 등 용도일 때 인정). 실제 인정 여부는 건축사·허가권자 확인이 필요합니다.</div>
+      <div class="hint adv">※ 개축은 종전 규모(건축면적·연면적·층수) 이내여야 합니다. 형태(일자/ㄴ자/분리 등)는 자유롭게 조합하되, 합계가 상한을 넘지 않게 맞추세요.</div>
+    </div>
+
+    <!-- 중심공간 -->
+    <div class="sec">
+      <h2><span class="dot c"></span>② 중심공간 (광장형·증축 +660㎡)</h2>
+      <div class="grid3" style="margin-bottom:8px;">
+        <div class="preset" data-cpos="link"><svg width="34" height="20"><rect x="4" y="3" width="5" height="14" fill="#bbb"/><rect x="25" y="3" width="5" height="14" fill="#bbb"/><rect x="12" y="6" width="10" height="8" rx="1" fill="#1aa3a3"/></svg><span>두 동 연결</span></div>
+        <div class="preset" data-cpos="court"><svg width="34" height="20"><rect x="3" y="3" width="28" height="14" fill="none" stroke="#bbb" stroke-width="2"/><rect x="11" y="6" width="12" height="8" rx="1" fill="#1aa3a3"/></svg><span>중정형</span></div>
+        <div class="preset" data-cpos="front"><svg width="34" height="20"><rect x="3" y="3" width="28" height="5" fill="#bbb"/><rect x="9" y="11" width="16" height="6" rx="1" fill="#1aa3a3"/></svg><span>전면 광장</span></div>
+        <div class="preset" data-add="central" style="grid-column:span 3;"><svg width="34" height="14" style="margin-top:0"><line x1="17" y1="2" x2="17" y2="12" stroke="#0d8585" stroke-width="2.5"/><line x1="11" y1="7" x2="23" y2="7" stroke="#0d8585" stroke-width="2.5"/></svg><span>중심공간 블록 추가</span></div>
+      </div>
+
+      <div class="card adv">
+        <div class="ct">중심공간 면적 <span id="ct-status" class="tag warn">검토</span></div>
+        <div class="field-mini" style="margin-bottom:9px;">목표 면적 <input id="cCentral" type="number" step="1" value="660">㎡</div>
+        <div class="meter">
+          <div class="ml"><span>총 면적</span><b><span id="ctArea">0</span> / <span id="ctAreaMax">660</span>㎡</b></div>
+          <div class="bar"><i id="ctAreaBar" style="width:0%;background:var(--warn)"></i></div>
+        </div>
+      </div>
+
+      <div class="adv" style="margin-top:11px;">
+        <div style="font-size:11.5px;font-weight:700;margin-bottom:7px;">배치 조건 체크</div>
+        <label class="chk"><input type="checkbox">중심성 — 학교 전체에서 접근이 쉬운 결절점</label>
+        <label class="chk"><input type="checkbox">주요 동선 연결 — 교사동·식당·체육관 동선이 모이는 곳</label>
+        <label class="chk"><input type="checkbox">채광·환기 — 광장형 특성상 자연채광/개방감 확보</label>
+        <label class="chk"><input type="checkbox">다목적 활용 — 행사·휴식·전시 등 가변적 사용</label>
+        <label class="chk"><input type="checkbox">안전·관리 — 감독 시야 확보 및 동선 안전</label>
+      </div>
+      <div class="adv" style="margin-top:9px;">
+        <div style="font-size:11.5px;font-weight:700;margin-bottom:6px;">배치 조건 메모</div>
+        <textarea id="memo" placeholder="예) A안 — 교사1호동과 개축동 사이 연결동선 상에 배치. 1층 광장 + 상부 보이드. 운동장 접근 우선."></textarea>
+      </div>
+    </div>
+
+    <!-- 선택 블록 편집 -->
+    <div class="sec">
+      <h2>③ 선택 블록 편집</h2>
+      <div id="editor">
+        <div class="ed-note" id="edName" style="font-weight:800;color:var(--ink);font-size:13px;"></div>
+        <div class="ed-grid">
+          <label>가로(m)</label><div class="inp"><input id="edW" type="number" step="0.5" min="2"></div>
+          <label>세로(m)</label><div class="inp"><input id="edD" type="number" step="0.5" min="2"></div>
+          <label>층수</label><div class="inp"><input id="edF" type="number" step="1" min="1" max="20"></div>
+        </div>
+        <div class="ed-note" id="edArea" style="font-variant-numeric:tabular-nums;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:11px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">회전</span>
+          <input id="edRot" type="range" min="0" max="359" step="1" value="0" style="flex:1;">
+          <span id="edRotVal" style="font-size:11px;width:34px;text-align:right;font-variant-numeric:tabular-nums;">0°</span>
+          <button class="btn btn-ghost" id="edRot90" style="padding:5px 9px;">+90°</button>
+        </div>
+        <div class="ed-note adv" style="margin-top:5px;">개축동·중심공간 전체가 중심을 기준으로 함께 회전합니다(360° 자유).</div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn btn-danger" id="edDelete" style="flex:1;">🗑 선택 블록 삭제</button>
+        </div>
+      </div>
+      <div id="noSel" class="hint">도면에서 블록을 <b>끌어 옮기고</b>, <b>클릭하면</b> 여기서 크기·층수를 바꿀 수 있어요. 모서리 흰 점을 끌면 크기가 조절됩니다.</div>
+    </div>
+
+    <!-- 보기 옵션 -->
+    <div class="sec">
+      <div class="toggle">기존 건물 표시
+        <label class="sw"><input id="tgExist" type="checkbox" checked><span></span></label></div>
+      <div class="toggle">교사2호동(철거대상) 윤곽
+        <label class="sw"><input id="tg2" type="checkbox" checked><span></span></label></div>
+      <div class="toggle adv">격자 스냅 (1m 단위)
+        <label class="sw"><input id="tgSnap" type="checkbox" checked><span></span></label></div>
+      <div class="toggle adv">개축동·중심공간 통째로 이동
+        <label class="sw"><input id="tgGroup" type="checkbox"><span></span></label></div>
+      <div class="row" style="margin-top:11px;">
+        <button class="btn btn-ghost" id="btnClear" style="flex:1;">개축·중심 블록 비우기</button>
+        <button class="btn btn-ghost" id="btnReset" style="flex:1;">전체 초기화</button>
+      </div>
+    </div>
+
+    <div class="sec adv" style="border:none;">
+      <div class="hint" style="background:#f4f7fb;border-radius:9px;padding:10px;">
+        <b>데이터 안내</b><br>건물 면적·층수는 건축물대장 기준입니다. 층당 면적은 연면적÷층수 추정값으로, 동별 표제부 입수 시 교사2호동 정확한 건축면적으로 상한 기준을 수정하세요. 기존 건물 위치는 모식적 배치이며 자유롭게 이동해 실제 배치에 맞출 수 있습니다.
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div id="main">
+    <div id="viewbar">
+      <button id="v2" class="on">평면 (2D)</button>
+      <button id="v3">입체 (3D)</button>
+      <button id="btnCapture" title="현재 화면을 PNG 이미지로 저장" style="margin-left:5px;background:#1f7a44;color:#fff;font-weight:800;">📷 캡처</button>
+    </div>
+    <div id="compass"><b>N</b>북</div>
+
+    <div id="wrap2d"><div id="stage"></div></div>
+
+    <canvas id="c3d"></canvas>
+    <div id="legend3d">
+      <div><i style="background:#9aa6b2"></i>기존 건물</div>
+      <div><i style="background:#e2624f"></i>개축동(교사2호동)</div>
+      <div><i style="background:#1aa3a3"></i>중심공간(광장형)</div>
+      <div style="font-size:10px;color:#888;margin-top:4px;line-height:1.5;">개축동·중심공간 드래그=상하좌우 이동 · 클릭 후 Delete=삭제<br>빈 공간·바닥 드래그=회전 · 휠/두 손가락=확대</div>
+    </div>
+
+    <div id="zoombar">🔍 <input id="zoom" type="range" min="0.5" max="4" step="0.05" value="2"></div>
+
+    <!-- 3개 배치대안 입체 미리보기 -->
+    <div id="introOverlay">
+      <div class="intro-top">
+        <div class="intro-title">용인중학교 공간재구조화 · 배치대안 미리보기
+          <small>협의용 초안 3개 안 — 사전기획·설계 단계에서 변경될 수 있음</small></div>
+        <div class="intro-tabs">
+          <button data-opt="1" class="on">옵션 1</button>
+          <button data-opt="2">옵션 2</button>
+          <button data-opt="3">옵션 3</button>
+          <button class="intro-start" id="introStart">배치플래너 직접 실행 →</button>
+        </div>
+      </div>
+      <div class="intro-desc" id="introDesc"></div>
+      <div class="intro-hint">빈 공간 드래그 = 시점 회전 · 휠/두 손가락 = 확대/축소　|　개축동(하늘색·1층 필로티) · 중점공간(주황) · 계단형 야외공간(주황) · 교사2호동(개축대상)</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  const $=id=>document.getElementById(id);
+
+  // ---------- Config ----------
+  const SITE={w:170,h:130};      // 작업 캔버스(m) — 모식적 대지 영역
+  const FLOOR_H=3.6;             // 층고(m)
+  const COL={existing:0x9aa6b2,rebuild:0xe2624f,central:0x1aa3a3,field:0x8fbf7e};
+
+  // 교사2호동 영역 중심(개축 블록 기본 위치) — 북측, 동서로 가장 긴 동
+  const RBZONE={cx:91, cy:32};
+
+  let uid=1;
+  const state={
+    scale:4.2, zoom:2, snap:true, groupMove:false, pilotis:false,
+    showExist:true, show2:true, view:'2d',
+    selId:null,
+    blocks:[]
+  };
+
+  // ---------- 초기 건물(건축물대장 기반 · 모식 배치) ----------
+  function defaultBlocks(){
+    // 좌표계: x→동(우), y→남(아래), 위=북(N). 면적·층수=건축물대장, 위치·비율=배치도 도면 반영.
+    // 건물 직사각형 크기는 대장상 건축면적(연면적÷층수)에 맞춤 → 표시 ㎡ = 실제 건축면적.
+    return [
+      {id:uid++,type:'field',   name:'운동장',   x:47, y:61, w:78,  d:48,  floors:0, fixedName:true},
+      {id:uid++,type:'existing',name:'급식실',   x:15, y:21, w:21,  d:22,  floors:4, fixedName:true, area:1862.07},
+      {id:uid++,type:'existing',name:'교사2호동', x:40, y:26, w:102, d:12.7,floors:3, fixedName:true, area:3887.52, is2:true},
+      {id:uid++,type:'existing',name:'교사1호동', x:51, y:43, w:82,  d:11.2,floors:3, fixedName:true, area:2758.8},
+      {id:uid++,type:'existing',name:'교사3호동', x:135,y:52, w:15,  d:12,  floors:6, fixedName:true, area:1071.3},
+      {id:uid++,type:'existing',name:'체육관',   x:130,y:69, w:20,  d:29,  floors:2, fixedName:true, area:1165.76},
+    ];
+  }
+  state.blocks=defaultBlocks();
+
+  // ---------- Scale / fit ----------
+  const wrap=$('wrap2d'), stage=$('stage');
+  function fitScale(){
+    const pad=40;
+    const sw=(wrap.clientWidth-pad)/SITE.w;
+    const sh=(wrap.clientHeight-pad)/SITE.h;
+    return Math.max(1.4, Math.min(sw,sh));
+  }
+  let baseScale=fitScale();
+  function applyScale(){
+    state.scale=baseScale*state.zoom;
+    stage.style.width =(SITE.w*state.scale)+'px';
+    stage.style.height=(SITE.h*state.scale)+'px';
+    stage.style.backgroundSize=(state.scale)+'px '+(state.scale)+'px';
+    renderStage();
+  }
+  const m2p=m=>m*state.scale;
+  const p2m=p=>p/state.scale;
+  const snapM=v=>state.snap?Math.round(v):Math.round(v*10)/10;
+
+  // ---------- Render 2D ----------
+  // 대지경계선 폴리곤(미터 좌표) — 서측 사선 경계 반영
+  const BOUNDARY="14,14 80,14 82,23 100,23 101,15 152,18 150,86 128,116 40,118";
+  function addBoundary(){
+    const d=document.createElement('div');
+    d.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:0;';
+    d.innerHTML='<svg width="100%" height="100%" viewBox="0 0 '+SITE.w+' '+SITE.h+'" preserveAspectRatio="none">'
+      +'<polygon points="'+BOUNDARY+'" fill="rgba(150,162,176,.05)" stroke="#9aa6b2" stroke-width="0.55" stroke-dasharray="2.4 1.6" stroke-linejoin="round"/>'
+      +'</svg>';
+    stage.appendChild(d);
+  }
+  function addEdges(){
+    const mk=(txt,css)=>{const e=document.createElement('div');e.className='edge';e.textContent=txt;e.style.cssText+=css;stage.appendChild(e);};
+    mk('▲ 북(N) · 대지경계선',  'left:50%;top:2px;transform:translateX(-50%);');
+    mk('10M 도로 (남측)',        'left:46%;bottom:2px;transform:translateX(-50%);');
+    mk('8M 도로 (서측)',         'left:2px;top:46%;');
+    mk('10M 도로 (동측)',        'right:2px;top:40%;');
+  }
+  function renderStage(){
+    stage.innerHTML='';
+    addBoundary();
+    for(const b of state.blocks){
+      if(b.type==='existing' && !b.is2 && !state.showExist) continue;
+      if(b.is2 && !state.show2) continue;
+      stage.appendChild(makeEl(b));
+    }
+    addEdges();
+    updateReadouts();
+  }
+  function clsFor(b){
+    let c='blk t-'+b.type;
+    if(b.is2) c+=' is2';
+    if(b.id===state.selId) c+=' sel';
+    return c;
+  }
+  function makeEl(b){
+    const el=document.createElement('div');
+    el.className=clsFor(b);
+    el.style.left=m2p(b.x)+'px'; el.style.top=m2p(b.y)+'px';
+    el.style.width=m2p(b.w)+'px'; el.style.height=m2p(b.d)+'px';
+    if(b.rot){ el.style.transform='rotate('+b.rot+'deg)'; }
+    el.dataset.id=b.id;
+    const foot=Math.round(b.w*b.d);
+    const pil=(b.type==='rebuild'&&state.pilotis&&b.floors>=2);
+    if(pil) el.classList.add('piloti');
+    let inner=`${b.name}`;
+    if(b.type!=='field') inner+=`<br><small>${b.floors}층 · ${foot}㎡${pil?' · 1층 필로티':''}</small>`;
+    el.innerHTML=`<div>${inner}</div>`;
+    if(b.is2) el.querySelector('div').innerHTML=`철거대상<br><small>${b.name} · ${b.floors}층</small>`;
+
+    // badge
+    if(b.type==='rebuild'||b.type==='central'){
+      const bd=document.createElement('div'); bd.className='badge';
+      bd.style.background=b.type==='rebuild'?'var(--rebuild-bd)':'var(--central-bd)';
+      bd.textContent=b.type==='rebuild'?'개축':'중심';
+      el.appendChild(bd);
+    }
+    // 드래그/리사이즈는 새 개축동·중심공간만 가능 (기존 건물·운동장은 고정 참조)
+    const movable=(b.type==='rebuild'||b.type==='central');
+    if(movable){
+      el.addEventListener('pointerdown',e=>onBlockDown(e,b));
+      if(b.id===state.selId){
+        const h=document.createElement('div'); h.className='handle';
+        el.appendChild(h);
+      }
+    }else{
+      el.style.cursor='default';
+    }
+    return el;
+  }
+
+  // ---------- Drag / resize (window-level; free move + group move) ----------
+  let drag=null;
+  const blockEl=id=>stage.querySelector('.blk[data-id="'+id+'"]');
+  const snapV=v=>state.snap?Math.round(v):Math.round(v*10)/10;
+  const blockAABB=b=>{
+    const r=(b.rot||0)*Math.PI/180,c=Math.cos(r),s=Math.sin(r),cx=b.x+b.w/2,cy=b.y+b.d/2;
+    let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+    [[-b.w/2,-b.d/2],[b.w/2,-b.d/2],[b.w/2,b.d/2],[-b.w/2,b.d/2]].forEach(p=>{
+      const x=cx+p[0]*c-p[1]*s,y=cy+p[0]*s+p[1]*c;
+      mnx=Math.min(mnx,x);mny=Math.min(mny,y);mxx=Math.max(mxx,x);mxy=Math.max(mxy,y);});
+    return {mnx,mny,mxx,mxy};
+  };
+  function addWin(){ window.addEventListener('pointermove',onDrag); window.addEventListener('pointerup',onDragEnd); }
+  function rmWin(){ window.removeEventListener('pointermove',onDrag); window.removeEventListener('pointerup',onDragEnd); }
+
+  function onBlockDown(e,b){
+    e.preventDefault(); e.stopPropagation();
+    const el=e.currentTarget;
+    if(e.target.classList.contains('handle')){ startResize(e,b,el); return; }
+    // 가벼운 선택: 화면을 다시 그리지 않음 → 누른 블록 요소가 그대로 유지되어 드래그가 끊기지 않음
+    state.selId=b.id;
+    stage.querySelectorAll('.blk.sel').forEach(x=>{ x.classList.remove('sel'); const h=x.querySelector('.handle'); if(h) h.remove(); });
+    el.classList.add('sel');
+    if(!el.querySelector('.handle')){ const h=document.createElement('div'); h.className='handle'; el.appendChild(h); }
+    showEditor(b.id);
+    // 개축동/중심공간은 (옵션 ON 시) 같은 종류 전체를 형태 유지한 채 함께 이동
+    const group=(state.groupMove && (b.type==='rebuild'||b.type==='central'))
+        ? state.blocks.filter(x=>x.type===b.type) : [b];
+    const items=group.map(x=>({b:x,ox:x.x,oy:x.y,el:(x.id===b.id?el:blockEl(x.id))}));
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    group.forEach(x=>{const a=blockAABB(x);minX=Math.min(minX,a.mnx);minY=Math.min(minY,a.mny);
+      maxX=Math.max(maxX,a.mxx);maxY=Math.max(maxY,a.mxy);});
+    drag={mode:'move',items,sx:e.clientX,sy:e.clientY,minX,minY,gw:maxX-minX,gh:maxY-minY};
+    addWin();
+  }
+  function startResize(e,b,el){
+    e.preventDefault(); e.stopPropagation();
+    const r=(b.rot||0)*Math.PI/180,c=Math.cos(r),s=Math.sin(r),cx=b.x+b.w/2,cy=b.y+b.d/2;
+    const TLx=cx+(-b.w/2)*c-(-b.d/2)*s, TLy=cy+(-b.w/2)*s+(-b.d/2)*c;  // 고정 기준 모서리
+    const BRx=cx+(b.w/2)*c-(b.d/2)*s,  BRy=cy+(b.w/2)*s+(b.d/2)*c;     // 드래그 모서리 시작점
+    drag={mode:'resize',b,el:(el||blockEl(b.id)),sx:e.clientX,sy:e.clientY,c,s,TLx,TLy,BRx,BRy};
+    addWin();
+  }
+  function onDrag(e){
+    if(!drag)return;
+    if(drag.mode==='move'){
+      let dx=snapV(p2m(e.clientX-drag.sx)), dy=snapV(p2m(e.clientY-drag.sy));
+      // 그룹 전체가 캔버스 안에 머물도록 이동량 제한 (위치 한정 아님 — 평면 어디로든 가능)
+      dx=Math.max(-drag.minX,Math.min(SITE.w-drag.gw-drag.minX,dx));
+      dy=Math.max(-drag.minY,Math.min(SITE.h-drag.gh-drag.minY,dy));
+      for(const it of drag.items){
+        it.b.x=it.ox+dx; it.b.y=it.oy+dy;
+        if(it.el){ it.el.style.left=m2p(it.b.x)+'px'; it.el.style.top=m2p(it.b.y)+'px'; }
+      }
+    }else{
+      const brx=drag.BRx+p2m(e.clientX-drag.sx), bry=drag.BRy+p2m(e.clientY-drag.sy);
+      const dx=brx-drag.TLx, dy=bry-drag.TLy;
+      let w=Math.max(2,snapV(dx*drag.c+dy*drag.s));     // 로컬 가로 (회전 역변환)
+      let d=Math.max(2,snapV(-dx*drag.s+dy*drag.c));    // 로컬 세로
+      const ncx=drag.TLx+(w/2)*drag.c-(d/2)*drag.s, ncy=drag.TLy+(w/2)*drag.s+(d/2)*drag.c;
+      drag.b.w=w; drag.b.d=d; drag.b.x=ncx-w/2; drag.b.y=ncy-d/2;
+      if(drag.el){ drag.el.style.left=m2p(drag.b.x)+'px'; drag.el.style.top=m2p(drag.b.y)+'px';
+        drag.el.style.width=m2p(w)+'px'; drag.el.style.height=m2p(d)+'px';
+        const sm=drag.el.querySelector('small'); if(sm) sm.innerHTML=drag.b.floors+'층 · '+Math.round(w*d)+'㎡'; }
+      syncEditor(drag.b);
+    }
+    updateReadouts();
+  }
+  function onDragEnd(){ rmWin(); drag=null; renderStage(); }
+  stage.addEventListener('pointerdown',e=>{ if(e.target===stage) select(null); });
+
+  // ---------- Selection / editor ----------
+  function showEditor(id){
+    const b=state.blocks.find(x=>x.id===id);
+    const ed=$('editor'), no=$('noSel');
+    if(b && b.type!=='field'){
+      ed.classList.add('on'); no.style.display='none';
+      $('edName').textContent=b.name+(b.is2?' (철거대상)':'');
+      $('edW').value=b.w; $('edD').value=b.d; $('edF').value=b.floors;
+      $('edRot').value=Math.round(b.rot||0); $('edRotVal').textContent=Math.round(b.rot||0)+'°';
+      syncEditor(b);
+    }else{
+      ed.classList.remove('on'); no.style.display='block';
+    }
+  }
+  function select(id){ state.selId=id; renderStage(); showEditor(id); }
+  function syncEditor(b){
+    const ft=Math.round(b.w*b.d), ar=Math.round(b.w*b.d*b.floors);
+    $('edArea').textContent=`건축면적 ${ft}㎡ · 연면적 ${ar}㎡`;
+    $('edF').classList.toggle('flr-warn', b.type==='rebuild'&&b.floors>3);
+  }
+  ['edW','edD','edF'].forEach(k=>{
+    $(k).addEventListener('input',()=>{
+      const b=state.blocks.find(x=>x.id===state.selId); if(!b)return;
+      let v=parseFloat($(k).value)||0;
+      if(k==='edW'){b.w=Math.max(2,v);} if(k==='edD'){b.d=Math.max(2,v);}
+      if(k==='edF'){b.floors=Math.max(1,Math.round(v));}
+      renderStage(); syncEditor(b);
+    });
+  });
+  function groupOf(b){ return (b.type==='rebuild'||b.type==='central')?state.blocks.filter(x=>x.type===b.type):[b]; }
+  function rotateGroup(blocks,deltaDeg){
+    if(!blocks.length||!deltaDeg)return;
+    let cx=0,cy=0,A=0;
+    blocks.forEach(b=>{const a=b.w*b.d;cx+=(b.x+b.w/2)*a;cy+=(b.y+b.d/2)*a;A+=a;});
+    cx/=A; cy/=A;
+    const r=deltaDeg*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+    blocks.forEach(b=>{
+      const px=b.x+b.w/2-cx, py=b.y+b.d/2-cy;
+      const nx=cx+px*c-py*s, ny=cy+px*s+py*c;
+      b.x=nx-b.w/2; b.y=ny-b.d/2;
+      b.rot=(((b.rot||0)+deltaDeg)%360+360)%360;
+    });
+  }
+  $('edRot').addEventListener('input',()=>{
+    const b=state.blocks.find(x=>x.id===state.selId); if(!b)return;
+    const target=parseFloat($('edRot').value)||0;
+    rotateGroup(groupOf(b), target-(b.rot||0));
+    $('edRotVal').textContent=Math.round(b.rot||0)+'°';
+    renderStage();
+  });
+  $('edRot90').addEventListener('click',()=>{
+    const b=state.blocks.find(x=>x.id===state.selId); if(!b)return;
+    rotateGroup(groupOf(b),90);
+    $('edRot').value=Math.round(b.rot||0); $('edRotVal').textContent=Math.round(b.rot||0)+'°';
+    renderStage();
+  });
+  $('edDelete').addEventListener('click',()=>{
+    state.blocks=state.blocks.filter(x=>x.id!==state.selId);
+    select(null);
+  });
+
+  // ---------- Add blocks ----------
+  function addBlock(type){
+    const b=type==='rebuild'
+      ? {id:uid++,type:'rebuild',name:'개축 '+(rbCount()+1),x:RBZONE.cx-7,y:RBZONE.cy-7,w:30,d:14,floors:3}
+      : {id:uid++,type:'central',name:'중심공간 '+(ctCount()+1),x:60,y:36,w:30,d:22,floors:1};
+    state.blocks.push(b); select(b.id);
+  }
+  const rbCount=()=>state.blocks.filter(b=>b.type==='rebuild').length;
+  const ctCount=()=>state.blocks.filter(b=>b.type==='central').length;
+
+  // ---------- Shape presets (개축) ----------
+  function clearType(t){ state.blocks=state.blocks.filter(b=>b.type!==t); }
+  function addRB(x,y,w,d){ state.blocks.push({id:uid++,type:'rebuild',name:'개축 '+(rbCount()+1),x,y,w,d,floors:3}); }
+  function applyShape(s){
+    clearType('rebuild');
+    const Z=RBZONE;
+    if(s==='bar'){ addRB(Z.cx-51,Z.cy-6.3,102,12.7); }
+    else if(s==='parallel'){ addRB(Z.cx-50,Z.cy-9,100,6); addRB(Z.cx-50,Z.cy+3,100,6); }
+    else if(s==='L'){ addRB(Z.cx-34,Z.cy-6,68,12); addRB(Z.cx-34,Z.cy+6,12,40); }
+    else if(s==='U'){ addRB(Z.cx-24,Z.cy-6,48,12); addRB(Z.cx-24,Z.cy+6,12,28); addRB(Z.cx+12,Z.cy+6,12,28); }
+    else if(s==='split'){ addRB(Z.cx-52,Z.cy-6,50,13); addRB(Z.cx+2,Z.cy-6,50,13); }
+    // clamp into canvas
+    state.blocks.forEach(b=>{ if(b.type==='rebuild'){
+      b.x=Math.max(0,Math.min(SITE.w-b.w,b.x)); b.y=Math.max(0,Math.min(SITE.h-b.d,b.y));
+    }});
+    select(null);
+  }
+  document.querySelectorAll('[data-shape]').forEach(el=>
+    el.addEventListener('click',()=>applyShape(el.dataset.shape)));
+  document.querySelectorAll('[data-add]').forEach(el=>
+    el.addEventListener('click',()=>addBlock(el.dataset.add)));
+
+  // ---------- Central placement presets ----------
+  function applyCPos(p){
+    if(ctCount()===0) addBlock('central');
+    const c=state.blocks.filter(b=>b.type==='central')[0];
+    if(p==='link'){ c.w=22; c.d=24; c.x=52; c.y=33; }          // 교사2호동~1호동 사이 연결(서측)
+    else if(p==='court'){ c.w=30; c.d=22; c.x=64; c.y=39; }     // 중정형(건물 사이 안뜰)
+    else if(p==='front'){ c.w=33; c.d=20; c.x=70; c.y=96; }     // 전면 광장(운동장/남측 전면)
+    c.x=Math.max(0,Math.min(SITE.w-c.w,c.x)); c.y=Math.max(0,Math.min(SITE.h-c.d,c.y));
+    select(c.id);
+  }
+  document.querySelectorAll('[data-cpos]').forEach(el=>
+    el.addEventListener('click',()=>applyCPos(el.dataset.cpos)));
+
+  // ---------- Readouts ----------
+  function setMeter(barId,valId,maxId,val,max,reverse){
+    const pct=max>0?Math.min(100,val/max*100):0;
+    $(valId).textContent=val.toLocaleString(undefined,{maximumFractionDigits:1});
+    if(maxId) $(maxId).textContent=max.toLocaleString(undefined,{maximumFractionDigits:1});
+    const bar=$(barId); bar.style.width=pct+'%';
+    let col=getComputedStyle(document.documentElement).getPropertyValue('--ok');
+    if(val>max) col=getComputedStyle(document.documentElement).getPropertyValue('--bad');
+    else if(pct>=92) col=getComputedStyle(document.documentElement).getPropertyValue('--warn');
+    bar.style.background=col.trim();
+    return val>max?'bad':(pct>=92?'warn':'ok');
+  }
+  function updateReadouts(){
+    const maxFoot=parseFloat($('cFoot').value)||0;
+    const maxArea=parseFloat($('cArea').value)||0;
+    const tgtCt =parseFloat($('cCentral').value)||0;
+
+    const rb=state.blocks.filter(b=>b.type==='rebuild');
+    const foot=rb.reduce((s,b)=>s+b.w*b.d,0);
+    const area=rb.reduce((s,b)=>{ const ef=(state.pilotis&&b.floors>=2)?(b.floors-1):b.floors; return s+b.w*b.d*ef; },0);
+    const flr =rb.reduce((m,b)=>Math.max(m,b.floors),0);
+    const pn=$('rbPilotiNote'); if(pn) pn.style.display=(state.pilotis&&rb.length)?'block':'none';
+
+    const sf=setMeter('rbFootBar','rbFoot','rbFootMax',foot,maxFoot);
+    const sa=setMeter('rbAreaBar','rbArea','rbAreaMax',area,maxArea);
+    // floors meter
+    const fpct=Math.min(100,flr/3*100); const fb=$('rbFlrBar');
+    fb.style.width=fpct+'%';
+    fb.style.background=(flr>3?getCss('--bad'):(flr===3?getCss('--ok'):getCss('--warn'))).trim();
+    $('rbFlr').textContent=flr;
+    const sflr=flr>3?'bad':(flr===0?'warn':'ok');
+
+    const worst=[sf,sa,sflr].includes('bad')?'bad':([sf,sa,sflr].includes('warn')?'warn':'ok');
+    const st=$('rb-status'); st.className='tag '+worst;
+    st.textContent= worst==='bad'?'상한 초과':(rb.length===0?'블록 없음':(worst==='warn'?'확인':'적합'));
+
+    const ct=state.blocks.filter(b=>b.type==='central');
+    const cArea=ct.reduce((s,b)=>s+b.w*b.d,0);
+    const sc=setMeter('ctAreaBar','ctArea','ctAreaMax',cArea,tgtCt);
+    const cst=$('ct-status');
+    const near=tgtCt>0 && Math.abs(cArea-tgtCt)/tgtCt<=0.08;
+    cst.className='tag '+(ct.length===0?'warn':(near?'ok':(cArea>tgtCt*1.08?'bad':'warn')));
+    cst.textContent=ct.length===0?'블록 없음':(near?'목표 근접':(cArea>tgtCt?'목표 초과':'목표 미달'));
+
+    if(state.view==='3d') update3D();
+  }
+  const getCss=v=>getComputedStyle(document.documentElement).getPropertyValue(v);
+  ['cFoot','cArea','cCentral'].forEach(k=>$(k).addEventListener('input',updateReadouts));
+
+  // ---------- Toggles ----------
+  $('tgExist').addEventListener('change',e=>{state.showExist=e.target.checked;renderStage();});
+  $('tg2').addEventListener('change',e=>{state.show2=e.target.checked;renderStage();});
+  $('tgSnap').addEventListener('change',e=>{state.snap=e.target.checked;});
+  $('tgGroup').addEventListener('change',e=>{state.groupMove=e.target.checked;});
+  $('tgPiloti').addEventListener('change',e=>{ state.pilotis=e.target.checked; renderStage(); if(R.ready) update3D(); });
+  $('btnClear').addEventListener('click',()=>{clearType('rebuild');clearType('central');select(null);});
+  $('btnReset').addEventListener('click',()=>{
+    state.blocks=defaultBlocks(); $('memo').value='';
+    document.querySelectorAll('.chk input').forEach(c=>c.checked=false);
+    select(null);
+  });
+  $('zoom').addEventListener('input',e=>{state.zoom=parseFloat(e.target.value);applyScale();});
+
+  // ---------- View switch ----------
+  $('v2').addEventListener('click',()=>switchView('2d'));
+  $('v3').addEventListener('click',()=>switchView('3d'));
+  function switchView(v){
+    state.view=v;
+    $('v2').classList.toggle('on',v==='2d');
+    $('v3').classList.toggle('on',v==='3d');
+    $('wrap2d').style.display=v==='2d'?'block':'none';
+    $('c3d').style.display=v==='3d'?'block':'none';
+    $('legend3d').style.display=v==='3d'?'block':'none';
+    $('zoombar').style.display=v==='2d'?'flex':'none';
+    if(v==='3d'){ init3D(); resize3D(); update3D(); }
+  }
+
+  // ---------- 화면 캡처 (PNG 저장) ----------
+  function downloadImg(url){
+    const ts=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    const a=document.createElement('a'); a.href=url; a.download='용인중_배치_'+ts+'.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function captureView(){
+    if(state.view==='3d'){
+      if(!R.ready){ init3D(); resize3D(); update3D(); }
+      try{ R.renderer.render(R.scene,R.camera); downloadImg(R.renderer.domElement.toDataURL('image/png')); }
+      catch(e){ alert('캡처에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
+    } else {
+      if(typeof html2canvas==='undefined'){ switchView('3d'); setTimeout(captureView,350); return; }
+      const btn=$('btnCapture'), prev=btn.textContent; btn.textContent='저장 중…'; btn.disabled=true;
+      html2canvas($('stage'),{backgroundColor:'#ffffff',scale:2,logging:false,useCORS:true}).then(canvas=>{
+        downloadImg(canvas.toDataURL('image/png')); btn.textContent=prev; btn.disabled=false;
+      }).catch(()=>{ btn.textContent=prev; btn.disabled=false; alert('평면 캡처에 실패했습니다. 입체(3D) 화면에서 캡처해보세요.'); });
+    }
+  }
+  $('btnCapture').addEventListener('click',captureView);
+
+  // ---------- 3D massing (draggable 개축동 + 필로티) ----------
+  let R={ready:false};
+  const findBG=id=>R.group?R.group.children.find(g=>g.userData.bid===id):null;
+  function buildColumns(w,d,col){
+    const cols=new THREE.Group(), ch=FLOOR_H, r=0.5;
+    const cc=(col!==undefined)?new THREE.Color(col).multiplyScalar(0.80):new THREE.Color(0xb6675a);
+    const mat=new THREE.MeshStandardMaterial({color:cc,roughness:0.85,metalness:0});
+    const nx=Math.max(2,Math.min(9,Math.round(w/9)+1));
+    const nz=Math.max(2,Math.min(5,Math.round(d/9)+1));
+    for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){
+      if(i!==0&&i!==nx-1&&j!==0&&j!==nz-1) continue; // 외곽 기둥만
+      const c=new THREE.Mesh(new THREE.BoxGeometry(r,ch,r),mat);
+      c.position.set(-w/2+i*(w/(nx-1)), ch/2, -d/2+j*(d/(nz-1))); c.castShadow=true; cols.add(c);
+    }
+    return cols;
+  }
+  function init3D(){
+    if(R.ready||typeof THREE==='undefined') return;
+    const cv=$('c3d');
+    R.renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});
+    R.renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+    R.renderer.shadowMap.enabled=true; R.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    if(THREE.sRGBEncoding!==undefined) R.renderer.outputEncoding=THREE.sRGBEncoding;
+    R.scene=new THREE.Scene();
+    // 그라데이션 하늘 배경
+    (function(){ const cnv=document.createElement('canvas'); cnv.width=8; cnv.height=256; const ctx=cnv.getContext('2d');
+      const gr=ctx.createLinearGradient(0,0,0,256); gr.addColorStop(0,'#cfdcef'); gr.addColorStop(0.5,'#dde6f1'); gr.addColorStop(1,'#eef1f5');
+      ctx.fillStyle=gr; ctx.fillRect(0,0,8,256); const tx=new THREE.CanvasTexture(cnv); R.scene.background=tx; })();
+    R.scene.fog=new THREE.Fog(0xe7ecf3, 230, 560);
+    R.camera=new THREE.PerspectiveCamera(45,1,1,2000);
+    R.theta=0.9; R.phi=0.95; R.radius=245; R.target=new THREE.Vector3(14,8,0);
+    R.scene.add(new THREE.HemisphereLight(0xffffff,0x9fae8f,0.62));
+    R.scene.add(new THREE.AmbientLight(0xffffff,0.30));
+    const dl=new THREE.DirectionalLight(0xfff4e0,0.95); dl.position.set(95,150,70); dl.castShadow=true;
+    dl.shadow.mapSize.set(2048,2048);
+    const sc=dl.shadow.camera; sc.near=20; sc.far=460; sc.left=-130; sc.right=130; sc.top=130; sc.bottom=-130;
+    dl.shadow.bias=-0.0004; R.scene.add(dl);
+    const dl2=new THREE.DirectionalLight(0xdfe7ff,0.18); dl2.position.set(-80,90,-60); R.scene.add(dl2);
+    const g=new THREE.Mesh(new THREE.PlaneGeometry(SITE.w+80,SITE.h+80),new THREE.MeshStandardMaterial({color:0xdfe7d8,roughness:1,metalness:0}));
+    g.rotation.x=-Math.PI/2; g.position.y=-0.05; g.receiveShadow=true; R.scene.add(g);
+    const grid=new THREE.GridHelper(Math.max(SITE.w,SITE.h)+80,Math.round((Math.max(SITE.w,SITE.h)+80)/10),0xbcc8b6,0xd2dcca);
+    grid.material.opacity=0.55; grid.material.transparent=true; grid.position.y=0.02; R.scene.add(grid);
+    R.group=new THREE.Group(); R.scene.add(R.group);
+    R.ray=new THREE.Raycaster(); R.plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+    let mode=null,lx=0,ly=0,d3=null; const ndc=new THREE.Vector2();
+    const ptrs=new Map(); let pinchD0=0,pinchR0=0;
+    const pdist=()=>{const a=[...ptrs.values()]; return a.length<2?0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);};
+    const setRay=e=>{const r=cv.getBoundingClientRect();
+      ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); R.ray.setFromCamera(ndc,R.camera);};
+    const pickBlock=()=>{
+      const hits=R.ray.intersectObjects(R.group.children,true);
+      for(const h of hits){ let o=h.object; while(o&&o.userData.bid===undefined) o=o.parent;
+        if(o&&(o.userData.type==='rebuild'||o.userData.type==='central')) return o; } // 개축동·중심공간만 이동
+      return null;
+    };
+    cv.addEventListener('pointerdown',e=>{
+      cv.setPointerCapture(e.pointerId);
+      ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(ptrs.size>=2){ mode='pinch'; d3=null; cv.style.cursor='grab'; pinchD0=pdist()||1; pinchR0=R.radius; return; }
+      if(state.introMode){ mode='orbit'; lx=e.clientX; ly=e.clientY; return; }  // 미리보기: 시점 회전만
+      setRay(e); const bg=pickBlock();
+      if(bg){
+        const b=state.blocks.find(x=>x.id===bg.userData.bid);
+        if(!b){ mode='orbit'; lx=e.clientX; ly=e.clientY; return; }
+        const changed=(state.selId!==b.id);
+        state.selId=b.id; showEditor(b.id);
+        if(changed) update3D();
+        const grp=(state.groupMove&&(b.type==='rebuild'||b.type==='central'))?state.blocks.filter(x=>x.type===b.type):[b];
+        let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+        grp.forEach(x=>{const a=blockAABB(x);mnX=Math.min(mnX,a.mnx);mnY=Math.min(mnY,a.mny);mxX=Math.max(mxX,a.mxx);mxY=Math.max(mxY,a.mxy);});
+        d3={items:grp.map(x=>({b:x,ox:x.x,oy:x.y})),sx:e.clientX,sy:e.clientY,minX:mnX,minY:mnY,gw:mxX-mnX,gh:mxY-mnY};
+        mode='drag'; cv.style.cursor='move';
+      } else { mode='orbit'; lx=e.clientX; ly=e.clientY; }
+    });
+    cv.addEventListener('pointermove',e=>{
+      if(ptrs.has(e.pointerId)) ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(mode==='pinch'){ const d=pdist(); if(d>0) R.radius=Math.max(70,Math.min(640,pinchR0*pinchD0/d)); return; }
+      if(mode==='orbit'){
+        R.theta-=(e.clientX-lx)*0.008; R.phi-=(e.clientY-ly)*0.008;
+        R.phi=Math.max(0.16,Math.min(1.45,R.phi)); lx=e.clientX; ly=e.clientY;
+      } else if(mode==='drag'&&d3){
+        // 카메라 화면축을 지면에 투영해 이동 → 시점과 무관하게 상하좌우 모든 방향 자연스럽게
+        const r=cv.getBoundingClientRect();
+        const k=(2*R.radius*Math.tan(22.5*Math.PI/180))/r.height;   // 픽셀당 월드 거리(근사)
+        const pdx=e.clientX-d3.sx, pdy=e.clientY-d3.sy;
+        R.camera.updateMatrixWorld();
+        const rt=new THREE.Vector3(), up=new THREE.Vector3(), bk=new THREE.Vector3();
+        R.camera.matrixWorld.extractBasis(rt,up,bk);
+        const gR=new THREE.Vector3(rt.x,0,rt.z); if(gR.lengthSq()>1e-6) gR.normalize();
+        const gF=new THREE.Vector3(-bk.x,0,-bk.z); if(gF.lengthSq()>1e-6) gF.normalize();
+        let dx=snapV(gR.x*(pdx*k)+gF.x*(-pdy*k));
+        let dy=snapV(gR.z*(pdx*k)+gF.z*(-pdy*k));
+        dx=Math.max(-d3.minX,Math.min(SITE.w-d3.gw-d3.minX,dx));
+        dy=Math.max(-d3.minY,Math.min(SITE.h-d3.gh-d3.minY,dy));
+        for(const it of d3.items){ it.b.x=it.ox+dx; it.b.y=it.oy+dy;
+          const bg=findBG(it.b.id); if(bg){ bg.position.x=it.b.x+it.b.w/2-SITE.w/2; bg.position.z=it.b.y+it.b.d/2-SITE.h/2; } }
+      }
+    });
+    const endP=e=>{ if(e&&e.pointerId!==undefined) ptrs.delete(e.pointerId);
+      if(mode==='pinch'){ if(ptrs.size<2) mode=null; return; }
+      if(mode==='drag') updateReadouts(); mode=null; d3=null; cv.style.cursor='grab'; };
+    cv.addEventListener('pointerup',endP); cv.addEventListener('pointercancel',endP);
+    cv.addEventListener('wheel',e=>{e.preventDefault();R.radius=Math.max(70,Math.min(640,R.radius*(1+(e.deltaY>0?0.1:-0.1))));},{passive:false});
+    cv.style.cursor='grab'; cv.style.touchAction='none';
+    R.ready=true;
+    (function loop(){ if(!R.ready)return; requestAnimationFrame(loop);
+      if(state.view!=='3d')return;
+      const ct=Math.cos(R.theta),st=Math.sin(R.theta),sp=Math.sin(R.phi),cp=Math.cos(R.phi);
+      R.camera.position.set(R.target.x+R.radius*sp*st, R.target.y+R.radius*cp, R.target.z+R.radius*sp*ct);
+      R.camera.lookAt(R.target); R.renderer.render(R.scene,R.camera);
+    })();
+  }
+  function floorLines(w,d,baseY,nLines){
+    const g=new THREE.Group(); if(nLines<1) return g;
+    const mat=new THREE.LineBasicMaterial({color:0x46566a,transparent:true,opacity:0.33});
+    const hw=w/2,hd=d/2;
+    for(let i=1;i<=nLines;i++){ const y=baseY+i*FLOOR_H;
+      const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-hw,y,-hd),new THREE.Vector3(hw,y,-hd),new THREE.Vector3(hw,y,hd),new THREE.Vector3(-hw,y,hd)]);
+      g.add(new THREE.LineLoop(geo,mat)); }
+    return g;
+  }
+  function update3D(){
+    if(!R.ready)return;
+    while(R.group.children.length){ const c=R.group.children[0];
+      c.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); R.group.remove(c); }
+    for(const b of state.blocks){
+      if(b.type==='existing'&&!b.is2&&!state.showExist) continue;
+      if(b.is2&&!state.show2) continue;
+      const bg=new THREE.Group(); bg.userData={bid:b.id,type:b.type};
+      bg.position.set(b.x+b.w/2-SITE.w/2, 0, b.y+b.d/2-SITE.h/2);
+      bg.rotation.y=-((b.rot||0)*Math.PI/180);
+      const col=(b.color!==undefined)?b.color:(b.is2?0xc9756a:COL[b.type]);
+      if(b.type==='field'){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(b.w,0.3,b.d),new THREE.MeshStandardMaterial({color:col,roughness:1,metalness:0}));
+        m.position.y=0.15; m.receiveShadow=true; bg.add(m);
+      }else{
+        const sel=(b.id===state.selId)&&!state.introMode;
+        const piloti=(b.type==='rebuild'&&(state.pilotis||b.piloti)&&b.floors>=2);
+        const mat=new THREE.MeshStandardMaterial({color:col,roughness:0.9,metalness:0,transparent:b.is2,opacity:b.is2?0.45:1});
+        if(sel) mat.emissive=new THREE.Color(0x5a4500);
+        const mkEdges=(geo,pos)=>{ const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+          new THREE.LineBasicMaterial({color:sel?0xffb300:0x2c3a48,transparent:true,opacity:sel?1:(b.is2?0.3:0.5),linewidth:sel?2:1})); e.position.copy(pos); bg.add(e); };
+        if(piloti){
+          const upH=(b.floors-1)*FLOOR_H;
+          const up=new THREE.Mesh(new THREE.BoxGeometry(b.w,upH,b.d),mat);
+          up.position.y=FLOOR_H+upH/2; up.castShadow=true; up.receiveShadow=true; bg.add(up); mkEdges(up.geometry,up.position);
+          bg.add(floorLines(b.w,b.d,FLOOR_H,b.floors-2));
+          bg.add(buildColumns(b.w,b.d,col));
+        }else{
+          const hh=Math.max(0.3,(b.h!==undefined?b.h:b.floors*FLOOR_H));
+          const m=new THREE.Mesh(new THREE.BoxGeometry(b.w,hh,b.d),mat);
+          m.position.y=hh/2; m.castShadow=true; m.receiveShadow=true; bg.add(m); mkEdges(m.geometry,m.position);
+          if(b.h===undefined&&b.floors>=2) bg.add(floorLines(b.w,b.d,0,b.floors-1));
+        }
+      }
+      R.group.add(bg);
+    }
+  }
+  function resize3D(){
+    if(!R.ready)return;
+    const w=$('main').clientWidth,h=$('main').clientHeight;
+    R.renderer.setSize(w,h,false); R.camera.aspect=w/h; R.camera.updateProjectionMatrix();
+  }
+
+  // ========== 3개 배치대안 입체 미리보기 ==========
+  const PZ=0xf2a149;   // 중점공간 — 주황
+  const GR=0xe5782b;   // 계단형 야외공간 — 진주황(주황 계열)
+  const RB=0x5cb8e6;   // 개축동 — 하늘색
+  const EXC=0x767f8b;  // 기존 동(진회색, 모형 톤)
+  // 사용자 표시(주황=중점/계단형, 하늘색=개축동) 기준 실측 배치. 개축 저층, 교사2호동은 개축대상 풋프린트로 유지
+  function exExist(){ return [
+    {type:'field',   name:'운동장',   x:58, y:52, w:106, d:70, floors:0, color:0xe6ddc9},
+    {type:'field',   name:'생태정원', x:20, y:6,  w:76,  d:14, floors:0, color:0xcadcae},
+    {type:'field',   name:'주차장',   x:100,y:6,  w:62,  d:14, floors:0, color:0xc4c8cd},
+    {type:'field',   name:'교사2호동(개축대상)', x:44, y:22, w:92, d:13, floors:0, color:0xdcdbd6},
+    {type:'existing',name:'급식실',   x:0,  y:8,  w:19,  d:28, floors:4, color:EXC},
+    {type:'existing',name:'교사1호동(본관)', x:45, y:36, w:103, d:13, floors:3, color:EXC},
+    {type:'existing',name:'교사3호동', x:153,y:49, w:14,  d:15, floors:6, color:EXC},
+    {type:'existing',name:'체육관',   x:134,y:75, w:31,  d:32, floors:2, color:EXC},
+  ];}
+  // 계단형 야외공간: 낮은 단 2개 + 넓은 단 1개 + 낮은 단 2개, 입체 계단(점층 상승, 중점공간의 절반 깊이)
+  function stairs(x0,y0,w,col){
+    const tr=[1.1,1.1,2.2,1.1,1.1], hs=[8.0,6.4,4.8,3.2,1.6]; // 단 깊이(좁·좁·넓·좁·좁, 합≈6.6)·높이(m, 북측 高→남측 低)
+    let y=y0, out=[];
+    for(let i=0;i<5;i++){ out.push({type:'central',name:'계단형 야외공간',x:x0,y:Math.round(y*10)/10,w:w,d:tr[i],floors:0,h:hs[i],color:col}); y+=tr[i]; }
+    return out;
+  }
+  const OPTBLOCKS={
+    // 옵션1: 북측 계단형(입체·중점의 절반 깊이)+중점공간 / 남서측 ㄴ자 개축(필로티)
+    1:()=>exExist().concat(stairs(50,22,22,GR)).concat([
+      {type:'central',name:'중점공간(2층)',x:74,y:22,w:20,d:13,floors:2,color:PZ},
+      {type:'rebuild',name:'개축동',x:40,y:58,w:13,d:54,floors:2,color:RB},
+      {type:'rebuild',name:'개축동',x:40,y:98,w:43,d:16,floors:2,color:RB},
+    ]),
+    // 옵션2: 북측 계단형+중점(북) / 남측 분할중점(긴 가로 + 남쪽 2층) / 서측 11자 개축(필로티)
+    2:()=>exExist().concat(stairs(60,22,20,GR)).concat([
+      {type:'central',name:'중점공간(북)',x:82,y:22,w:16,d:13,floors:2,color:PZ},
+      {type:'central',name:'중점공간(남·긴 가로)',x:66,y:54,w:52,d:7,floors:1,color:PZ},
+      {type:'central',name:'중점공간(남·2층)',x:80,y:61,w:24,d:14,floors:2,color:PZ},
+      {type:'rebuild',name:'개축동(북측 바·좌)',x:34,y:24,w:11,d:44,floors:2,color:RB},
+      {type:'rebuild',name:'개축동(남측 바·우, 필로티)',x:46,y:58,w:11,d:60,floors:2,color:RB,piloti:true},
+    ]),
+    // 옵션3: 북측 계단형(입체·절반 깊이)+중점 / 남측 긴 중점 / 동측 세로 개축(필로티)
+    3:()=>exExist().concat(stairs(50,22,24,GR)).concat([
+      {type:'central',name:'중점공간 북(2층)',x:76,y:22,w:20,d:13,floors:2,color:PZ},
+      {type:'central',name:'중점공간 남(2층)',x:54,y:52,w:50,d:16,floors:2,color:PZ},
+      {type:'rebuild',name:'개축동(좌·필로티)',x:106,y:54,w:7,d:70,floors:2,color:RB,piloti:true},
+      {type:'rebuild',name:'개축동(우)',x:113,y:54,w:7,d:70,floors:2,color:RB},
+    ]),
+  };
+  const OPTMETA={
+    1:{title:'옵션 1 — 서측 ‘ㄴ’자형 개축 + 본관 후면 광장',
+       pros:['1단계에 사용 중인 교사1·2호동을 건드리지 않고 독립 공사 가능','교사1호동과 연결하여 개축 가능','교사2호동 철거 후 후면에 광장형 공간 증축 → 생태정원 연계 계단형 외부공간','차량 진입·전용 주차장 후면 배치로 교내 CAR-FREE 존','운동장 축소면적 최소화'],
+       cons:['서측 출입구쪽 큰 ‘ㄴ’자 건물로 진입 시 개방감 다소 감소','일자형의 긴 공간구조','급식실·체육관·3호동과 거리가 유지되어 연계성에 한계','후반부 교사1호동 후면 증축공사가 잔존']},
+    2:{title:'옵션 2 — 서측 일자형 개축 + 운동장으로 열린 외부공간(공간 네트워크 강화)',
+       pros:['전·후면에 광장 분산 배치 → 단절된 동선 보완·진입부 개방감 개선','중정·생태정원·1·2개층 광장 분산으로 다양한 교육활동 확장','차량·주차 동측 정리, 보행 중심 CAR-FREE 존','개축동·기존 교사동·급식실을 브리지로 연결','운동장 쪽으로 크게 열려 실내외 연계(하부 필로티)','지역개방 시 동·서 분리로 안전한 학교생활공간'],
+       cons:['1단계부터 교사2호동 일부 철거 필요 → 초기 소음·분진·안전 부담','부분 철거·개축·리모델링·증축 복합으로 공정 난이도 높음','후반부 교사1호동 후면 증축공사 잔존','서측 개축으로 기존 수목·숲 일부 훼손/이식 가능']},
+    3:{title:'옵션 3 — 전면·동측 개축 + 서측 생태숲 유지',
+       pros:['전면 저층부·동측 배치로 기존 교사동과 연계성↑, 지붕면 인공대지로 레벨차 동선 완화','교사2호동 철거 공간에 배면 계단형 중정 광장','운동장에 바로 접해 저층부를 학습마루·스탠드·필로티·커뮤니티로 조성 → 수업공간과 적극 연결','운동장을 바라보는 학습공간, 기존 생태숲 유지로 전면 이미지 개선'],
+       cons:['개축동–교사1호동 직접 동선 연결이 소극적','1단계부터 개축+교사3호동·체육관 리모델링 동시 → 체육·특별활동 대체공간 필요','운동장 축소면적이 가장 큼','급식실까지 거리가 멀어져 우천·혹서기 비가림 보행동선 검토 필요']},
+  };
+  function renderIntroDesc(n){
+    const m=OPTMETA[n];
+    $('introDesc').innerHTML=
+      '<div class="id-title">'+m.title+'</div>'+
+      '<div class="id-meta">공사 후 총 연면적 11,405.45㎡ · 법정 주차대수 57대</div>'+
+      '<div class="id-cols"><div><div class="id-h pos">장점</div><ul>'+
+      m.pros.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>'+
+      '<div><div class="id-h neg">단점</div><ul>'+
+      m.cons.map(x=>'<li>'+x+'</li>').join('')+'</ul></div></div>';
+  }
+  function showOption(n){
+    state.introOpt=n;
+    document.querySelectorAll('.intro-tabs button').forEach(btn=>btn.classList.toggle('on',btn.dataset.opt===String(n)));
+    state.blocks=OPTBLOCKS[n]().map(b=>Object.assign({id:uid++,rot:0},b));
+    renderIntroDesc(n);
+    if(R.ready) update3D();
+  }
+  function enterIntro(){
+    state.introMode=true;
+    $('panel').style.display='none';
+    $('introOverlay').style.display='flex';
+    switchView('3d');
+    $('legend3d').style.display='none';
+    showOption(state.introOpt||1);
+    resize3D();
+  }
+  function startPlanner(){
+    state.introMode=false;
+    $('introOverlay').style.display='none';
+    $('panel').style.display='';
+    state.blocks=defaultBlocks(); select(null);
+    baseScale=fitScale(); applyScale();
+    switchView('2d');
+  }
+  document.querySelectorAll('.intro-tabs button').forEach(btn=>btn.addEventListener('click',()=>showOption(+btn.dataset.opt)));
+  $('introStart').addEventListener('click',startPlanner);
+  $('reopenIntro').addEventListener('click',enterIntro);
+
+  // 간단/자세히 모드
+  (function(){
+    var adv=false, panel=$('panel'), btn=$('btnMode'), ml=document.querySelector('.mode-bar .ml');
+    function apply(){ panel.classList.toggle('simple',!adv);
+      if(btn) btn.textContent=adv?'간단히 ▴':'자세히 ▾';
+      if(ml) ml.innerHTML=adv?'🧭 지금은 <u>자세히 보기</u>':'🧭 지금은 <u>간단 보기</u>'; }
+    if(btn) btn.addEventListener('click',function(){ adv=!adv; apply(); });
+    apply();
+  })();
+
+  // ---------- 키보드 삭제 (2D·3D 공통) ----------
+  window.addEventListener('keydown',e=>{
+    if(state.introMode) return;
+    const ae=document.activeElement;
+    if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable)) return;
+    if(e.key==='Delete'||e.key==='Backspace'){
+      const b=state.blocks.find(x=>x.id===state.selId);
+      if(b&&(b.type==='rebuild'||b.type==='central')){
+        e.preventDefault();
+        state.blocks=state.blocks.filter(x=>x.id!==state.selId);
+        select(null);
+        if(state.view==='3d'&&R.ready) update3D();
+      }
+    }
+  });
+
+  // ---------- Resize ----------
+  window.addEventListener('resize',()=>{ baseScale=fitScale(); applyScale(); resize3D(); });
+
+  // ---------- Init ----------
+  applyScale();
+  enterIntro();   // 플래너 실행 전, 3개 배치대안을 입체로 먼저 미리보기
+})();
+</script>
+</body>
+</html>
